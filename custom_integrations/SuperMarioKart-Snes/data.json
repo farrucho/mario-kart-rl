@@ -1,0 +1,88 @@
+{
+  "info": {
+    "checkpoint": {
+      "address": 8261824,
+      "type": "|u1"
+    },
+    "clock_minutes": {
+      "address": 8257796,
+      "type": "|d1"
+    },
+    "clock_seconds": {
+      "address": 8257794,
+      "type": "|d1"
+    },
+    "coins": {
+      "address": 8261120,
+      "type": "|u1"
+    },
+    "collision_detection": {
+      "address": 8261714,
+      "type": "|u1"
+    },
+    "current_lap": {
+      "address": 8261825,
+      "type": "|u1"
+    },
+    "finished_racer_rank": {
+      "address": 8257838,
+      "type": "<u2"
+    },
+    "item_byte1": {
+      "address": 8260976,
+      "type": "|u1"
+    },
+    "item_byte2": {
+      "address": 8260713,
+      "type": "|u1"
+    },
+    "kart_skidded_out_of_control": {
+      "address": 8261798,
+      "type": "|u1"
+    },
+    "max_reached_lap": {
+      "address": 8261881,
+      "type": "|u1"
+    },
+    "max_speed": {
+      "address": 8261846,
+      "type": ">u2"
+    },
+    "pos_east": {
+      "address": 8257672,
+      "type": "|u2"
+    },
+    "pos_south": {
+      "address": 8257676,
+      "type": "|u2"
+    },
+    "racers_finished": {
+      "address": 8257860,
+      "type": "|u2"
+    },
+    "rank": {
+      "address": 8261696,
+      "type": "|u2"
+    },
+    "speed_east": {
+      "address": 8261666,
+      "type": "|i2"
+    },
+    "speed_overall": {
+      "address": 8261866,
+      "type": "|i2"
+    },
+    "speed_south": {
+      "address": 8261668,
+      "type": "|i2"
+    },
+    "status": {
+      "address": 8261792,
+      "type": "|u1"
+    },
+    "surface_type": {
+      "address": 8261806,
+      "type": "|u1"
+    }
+  }
+}
