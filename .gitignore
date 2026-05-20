@@ -1,5 +1,6 @@
 .venv
 custom_integrations/SuperMarioKart-Snes/rom.sfc
+custom_integrations/SuperMarioKart-Snes/rom.sha
 stable-retro
 __pycache__
 models
