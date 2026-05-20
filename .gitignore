@@ -1,3 +1,8 @@
 .venv
 custom_integrations/SuperMarioKart-Snes/rom.sfc
 stable-retro
+__pycache__
+models
+runs
+videos
+wandb
