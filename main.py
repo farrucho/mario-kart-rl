@@ -22,42 +22,7 @@ from gymnasium import spaces
 from stable_baselines3 import PPO
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
-
-class CustomCNN(BaseFeaturesExtractor):
-    """
-    :param observation_space: (gym.Space)
-    :param features_dim: (int) Number of features extracted.
-        This corresponds to the number of unit for the last layer.
-    """
-
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
-        super().__init__(observation_space, features_dim)
-        # We assume CxHxW images (channels first)
-        # Re-ordering will be done by pre-preprocessing or wrapper
-        n_input_channels = observation_space.shape[0]
-        self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        # pdb.set_trace()
-        # Compute shape by doing one forward pass
-        with th.no_grad():
-            n_flatten = self.cnn(
-                th.as_tensor(observation_space.sample()[None]).float()
-            ).shape[1]
-
-        self.linear = nn.Sequential(
-                nn.Linear(n_flatten, features_dim), 
-                nn.ReLU()
-            )
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.linear(self.cnn(observations))
-
-
+from CustomCNN import CustomCNN
 
 
 from stable_baselines3 import PPO
@@ -66,19 +31,22 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 import wandb
 from wandb.integration.sb3 import WandbCallback
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import VecNormalize
+
+from WandbTrajectoryCallback import WandbTrajectoryCallback
 
 if __name__ == "__main__":
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 10000000,
-        "learning_rate":0.0003,
-        "n_steps":1024,
-        "batch_size": 64,
-        "n_epochs": 10,
-        "gamma": 0.995,
+        "total_timesteps": 100000000,
+        "learning_rate": 2.5e-4,
+        "n_steps": 1024,
+        "batch_size": 256,
+        "n_epochs": 5,
+        "gamma": 0.99,
         "clip_range": 0.2,
         "normalize_advantage": True,
-        "ent_coef": 0.01,
+        "ent_coef": 0.02,
         "vf_coef": 0.5,
         "max_grad_norm": 0.5,
         "target_kl": None,
@@ -86,23 +54,45 @@ if __name__ == "__main__":
         "stats_window_size": 100,
         "model_save_freq": 40000,
         "gradient_save_freq": 40000,
-        "record_video_trigger": 40000,
-        "video_length": 1024 # igual ao nsteps para perceber
+        "record_video_trigger": 8000,
+        "video_length": 1024, # igual ao nsteps para perceber
+        "reward_log_freq": 1000, # global steps
+        "trajectory_log_freq": 10000,
     }
 
     run = wandb.init(
         project="SuperMarioKart",
-        name="(part5) stats_window_size changed to 100 episodes - 8 workers and spawn method",
+        name="changed speed reward, trying to get good rankings",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         monitor_gym=True,  # auto-upload the videos of agents playing the game
         save_code=True,  # optional
     )
 
+    wandb_main_cb = WandbCallback(
+            model_save_freq=config["model_save_freq"],
+            gradient_save_freq=config["gradient_save_freq"],
+            model_save_path=f"models/{run.id}",
+            verbose=2,
+        )
+
+    traj_cb = WandbTrajectoryCallback(reward_log_freq=config["reward_log_freq"],
+    trajectory_log_freq=config["trajectory_log_freq"])
+
+
     num_cpu = 12
 
-    vec_env = SubprocVecEnv([lambda: Monitor(SuperMarioKartEnv()) for _ in range(num_cpu)], start_method="spawn")
+    vec_env = SubprocVecEnv([lambda: Monitor(SuperMarioKartEnv(frameskipN=5)) for _ in range(num_cpu)], start_method="spawn")
     vec_env = VecFrameStack(vec_env, n_stack=4, channels_order="first")
+
+    vec_env = VecNormalize(
+        vec_env,
+        norm_obs=False,
+        norm_reward=True,
+        clip_reward=10.0,
+    )
+
+    # VIDEO RECORDER
     vec_env = VecVideoRecorder(
         vec_env,
         f"videos/{run.id}",
@@ -140,30 +130,20 @@ if __name__ == "__main__":
 
     # model.learn(
     #     total_timesteps=config["total_timesteps"],
-    #     callback=WandbCallback(
-    #         model_save_freq=config["model_save_freq"],
-    #         gradient_save_freq=config["gradient_save_freq"],
-    #         model_save_path=f"models/{run.id}",
-    #         verbose=2,
-    #     ),
+    #     callback=[wandb_main_cb, traj_cb],
     # )
 
 
     # LOAD FROM CHECKPOINT!!
     model = PPO.load(
-        "models/fptsne5c/model.zip",
+        "models/4lpio9u4/model.zip",
         env=vec_env,
         device="cuda",
     )
 
     model.learn(
         total_timesteps=config["total_timesteps"],
-        callback=WandbCallback(
-            model_save_freq=config["model_save_freq"],
-            gradient_save_freq=config["gradient_save_freq"],
-            model_save_path=f"models/{run.id}",
-            verbose=2,
-        ),
+        callback=[wandb_main_cb, traj_cb],
         reset_num_timesteps=False,
     )
 

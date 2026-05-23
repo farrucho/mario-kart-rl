@@ -14,7 +14,7 @@ speed_south
 speed_overall esta é inutil pois é a soma da east + south, se o carro andar para noroeste é tudo negativo, oque nao faz sentido, usar o modulo da velocidade ao inves desta
 surface type, util para ver se esta a andar fora da estrada
 clock nao é cronometro
-checkpoint vai de 0-X, e vai dando reset por volta
+checkpoint vai de 0-X (~32), e vai dando reset por volta
 
 end_condition: if player finished (lap number == 133) OR all racers finished (racers_finished >= 14 )
 
