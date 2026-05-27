@@ -8,8 +8,8 @@ Reinforcement Learning agent for **Super Mario Kart (SNES)** using:
 * frame stacking + CNN observations
 
 The agent is able to:
-* completing races consistently
-* achieving top placements
+* complete races consistently
+* achieve top placements
 * make smart shortcuts
 * defense (dodge other players items)
 * attack (use items at the right time)
