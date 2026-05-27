@@ -26,7 +26,7 @@ The agent is able to:
 
 * Custom `RetroEnv` wrapper with frameskipping
 * Reduced discrete action space (this improves PPO training stability BY A LOT from 2^12=4096 to 18 possible combination of actions)
-* PPO training with parallel environments in cpu with inference on GPU RTX 3060
+* PPO training (60M Steps) with parallel environments in cpu with inference on GPU RTX 3060
 * Reward shaping for racing behavior based on RAM addresses
 * Observation space (`4x84x84`) is preprocessed (cropped->grayscale->resized->frame stacking)
 * Terminated conditions (no checkpoint progress, finish first lap at last place, and more) allow the PPO algorithm to converge much faster
