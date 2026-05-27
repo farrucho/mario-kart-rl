@@ -77,6 +77,7 @@ class WandbTrajectoryCallback(BaseCallback):
             + info["reward_speed"]
             + info["reward_finish_race"]
             + info["reward_time"]
+            + info["reward_start_speed"]
         )
 
         wandb.log({
@@ -105,8 +106,11 @@ class WandbTrajectoryCallback(BaseCallback):
             "episode/reward_time":
                 info["reward_time"],
 
+            "episode/reward_start_speed":
+                info["reward_start_speed"],
+
             "episode/final_rank":
-                info["rank"],
+                info["rank"]/2+1,
 
             "episode/final_lap":
                 info["current_lap"]-127,
@@ -117,10 +121,7 @@ class WandbTrajectoryCallback(BaseCallback):
             "episode/final_time_seconds":
                 info["clock_minutes"] * 60
                 + info["clock_seconds"],
-
-            "global_step":
-                self.num_timesteps,
-        })
+        }, step=self.num_timesteps)
 
     def _plot_finished_episode(self, info):
 
@@ -191,6 +192,7 @@ class WandbTrajectoryCallback(BaseCallback):
             + info["reward_speed"]
             + info["reward_finish_race"]
             + info["reward_time"]
+            + info["reward_start_speed"]
         )
 
         ax.set_title(
@@ -237,13 +239,8 @@ class WandbTrajectoryCallback(BaseCallback):
             )
 
             wandb.log({
-
-                "trajectory/finished_episode":
-                    wandb.Image(tmpfile.name),
-
-                "global_step":
-                    self.num_timesteps,
-            })
+                "trajectory/finished_episode": wandb.Image(tmpfile.name),
+            }, step=self.num_timesteps)
 
             tmp_path = tmpfile.name
 

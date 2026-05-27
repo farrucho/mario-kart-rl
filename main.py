@@ -1,36 +1,12 @@
-import stable_retro as retro
-import stable_retro.data as stable_retro_data
-import os
-import cv2
-import numpy as np
-import gymnasium as gym
-from gymnasium import spaces
-from collections import deque
-import pdb
-
 from SuperMarioKartEnv import SuperMarioKartEnv
-
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecFrameStack
-
-
-import torch as th
-import torch.nn as nn
-from gymnasium import spaces
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-
 from CustomCNN import CustomCNN
 
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 import wandb
 from wandb.integration.sb3 import WandbCallback
+from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecFrameStack
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env import VecNormalize
 
 from WandbTrajectoryCallback import WandbTrajectoryCallback
@@ -46,15 +22,15 @@ if __name__ == "__main__":
         "gamma": 0.99,
         "clip_range": 0.2,
         "normalize_advantage": True,
-        "ent_coef": 0.02,
+        "ent_coef": 0.0001,
         "vf_coef": 0.5,
         "max_grad_norm": 0.5,
         "target_kl": None,
         # stats
         "stats_window_size": 100,
-        "model_save_freq": 40000,
+        "model_save_freq": 30000,
         "gradient_save_freq": 40000,
-        "record_video_trigger": 8000,
+        "record_video_trigger": 20000,
         "video_length": 1024, # igual ao nsteps para perceber
         "reward_log_freq": 1000, # global steps
         "trajectory_log_freq": 10000,
@@ -62,7 +38,7 @@ if __name__ == "__main__":
 
     run = wandb.init(
         project="SuperMarioKart",
-        name="changed speed reward, trying to get good rankings",
+        name="(part5) Action Space Reduced, training from start - entropy reduced to 0.0001",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         monitor_gym=True,  # auto-upload the videos of agents playing the game
@@ -136,7 +112,7 @@ if __name__ == "__main__":
 
     # LOAD FROM CHECKPOINT!!
     model = PPO.load(
-        "models/4lpio9u4/model.zip",
+        "models/g7kqm7sn/model.zip",
         env=vec_env,
         device="cuda",
     )
