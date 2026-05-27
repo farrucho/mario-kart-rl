@@ -78,4 +78,4 @@ Parallel training:
 * Stable-Baselines3
 * Nintendo / Super Mario Kart SNES
 * https://datacrystal.tcrf.net/wiki/Super_Mario_Kart/RAM_map
-* https://bin.smwcentral.net/u/34395/SMK_Potential_Ram_Addresses.tx
+* https://bin.smwcentral.net/u/34395/SMK_Potential_Ram_Addresses.txt
