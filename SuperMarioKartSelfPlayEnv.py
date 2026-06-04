@@ -53,33 +53,25 @@ class SuperMarioKartSelfPlayEnv(SuperMarioKartEnv):
         full_actions = np.zeros(24, dtype=np.uint8)
         full_actions[self.mapped_indices] = allowed_action
         
+
         stacked_obs = np.concatenate(
             list(self.stacked_obs),
             axis=0
         )
-        # print(stacked_obs)
-        # print(stacked_obs.shape)
-        # print(stacked_obs.dtype)
-        # print(stacked_obs[0])
 
-        # self_model_action, _states = self.opponent_model.predict(stacked_obs, deterministic=True)
-        obs_tensor = torch.as_tensor(
-            stacked_obs[None],
-            device="cuda",
-            dtype=torch.float32
+        obs_tensor, _ = self.opponent_model.policy.obs_to_tensor(
+            stacked_obs
         )
 
         with torch.no_grad():
-            actions, _, _ = self.opponent_model.policy.forward(obs_tensor)
+            action = self.opponent_model.policy._predict(
+                obs_tensor,
+                deterministic=True
+            )
 
-        self_model_action = int(actions.item())
-        del obs_tensor, actions
-        # self_model_action, _states = self.opponent_model.predict(stacked_obs)
-
+        self_model_action = int(action.item())
 
         opponent_allowed_action = self.allowed_actions[self_model_action]
-
-
         full_actions[self.mapped_indices+12] = opponent_allowed_action
 
 
@@ -87,12 +79,24 @@ class SuperMarioKartSelfPlayEnv(SuperMarioKartEnv):
         for j in range(0, self.frameskipN):
             next_observation_original, next_reward, next_terminated, _, next_info = retro.RetroEnv.step(self,full_actions)
 
-            next_observation = self.preprocessP1Obs(next_observation_original)
-
-            self.stacked_obs.append(self.preprocessP2Obs(next_observation_original).copy())
+            final_observation_original = next_observation_original
             if next_terminated:
                 break
-        
+
+        next_observation = self.preprocessP1Obs(final_observation_original)
+
+        self.stacked_obs.append(self.preprocessP2Obs(final_observation_original).copy())
+
+
+        # # 1. Convert the deque of frames into a solid numpy array -> shape: (4, 1, 84, 84)
+        # obs_array = np.array(self.stacked_obs)
+        # # 2. Squeeze out the extra 1-sized channel dimension -> shape: (4, 84, 84)
+        # obs_array = np.squeeze(obs_array, axis=1)
+        # # 3. Stack the 4 frames horizontally side-by-side -> shape: (84, 336)
+        # tiled_obs = np.hstack([obs_array[i] for i in range(self.frame_stack)])
+        # # 4. Save your image
+        # cv2.imwrite("./images/test_observation.png", tiled_obs.astype(np.uint8))
+
 
         if self.info is None or self.info == {}:
             # print("TRIGGER, FIRST STEP")
@@ -193,15 +197,9 @@ class SuperMarioKartSelfPlayEnv(SuperMarioKartEnv):
                 next_info['reward_start_speed'] += 0.005*(np.sqrt(next_info['speed_south']**2 + next_info['speed_east']**2))
 
             # com frameskip de 4 obtém 1569 steps -> ~10steps/segundo
-            # before 20M steps
             terminated = (next_lap == 6) or \
                             next_seconds - next_info['last_checkpoint_time'] > 8 or \
-                            (next_seconds > 150) or \
-                            (next_rank == 8 and next_seconds > 30)
-            # after 20M steps
-            # terminated = (next_lap == 6) or \
-            #                 next_seconds - next_info['last_checkpoint_time'] > 8 or \
-            #                 (next_seconds > 150)
+                            (next_seconds > 150)
             
             if terminated:
                 next_info['position_history_south'] = np.array(self.pos_south_hist, dtype=np.int16)
@@ -231,20 +229,21 @@ class SuperMarioKartSelfPlayEnv(SuperMarioKartEnv):
 
         return preprocessed_obs, info
 
-# from stable_baselines3.common.vec_env import SubprocVecEnv, VecFrameStack, VecNormalize, VecMonitor
-# import time
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecFrameStack, VecNormalize, VecMonitor
+import time
 
-# if __name__ == "__main__":
-#     num_cpu = 1
-#     vec_env = SubprocVecEnv([lambda: SuperMarioKartSelfPlayEnv(models_pool=["/home/farrucho/Desktop/extra/mario-kart-rl/models/16yxsuaq/model.zip","/home/farrucho/Desktop/extra/mario-kart-rl/models/16yxsuaq/model_13M.zip","/home/farrucho/Desktop/extra/mario-kart-rl/models/3eacin6z/model_15M.zip","/home/farrucho/Desktop/extra/mario-kart-rl/models/3eacin6z/model_19M.zip"], frameskipN=4, frame_stack=4, render_mode="human") for _ in range(num_cpu)], start_method="spawn")
+if __name__ == "__main__":
+    num_cpu = 1
+    vec_env = SubprocVecEnv([lambda: SuperMarioKartSelfPlayEnv(models_pool=["/home/farrucho/Desktop/extra/mario-kart-rl/models/s8x8ckan/model_30M.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/uhwchs57/model_60M.zip",], frameskipN=4, frame_stack=4, render_mode="human") for _ in range(num_cpu)], start_method="spawn")
     
-#     vec_env = VecFrameStack(vec_env, n_stack=4, channels_order="first")
+    vec_env = VecFrameStack(vec_env, n_stack=4, channels_order="first")
 
-#     vec_env.reset()
-#     while True:
-#         actions = np.array([vec_env.action_space.sample() for _ in range(vec_env.num_envs)])
+    vec_env.reset()
+    while True:
+        actions = np.array([vec_env.action_space.sample() for _ in range(vec_env.num_envs)])
 
-#         obs, rewards, dones , infos = vec_env.step(actions)
-#         vec_env.render()
+        obs, rewards, dones , infos = vec_env.step(actions)
+        vec_env.render()
 
-#         time.sleep(0.02)
+        time.sleep(0.02)
