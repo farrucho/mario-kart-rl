@@ -33,11 +33,11 @@ class WandbTrajectoryCallback(BaseCallback):
         for done, info in zip(dones, infos):
 
             if done:
-
-                if (
-                    "position_history_east" in info
-                    and "position_history_south" in info
-                ):
+                #
+                # if (
+                    # "position_history_east" in info
+                    # and "position_history_south" in info
+                # ):
                     self.last_finished_episode_info = info
                     break
 
@@ -56,15 +56,15 @@ class WandbTrajectoryCallback(BaseCallback):
         # --------------------------------------------------
         # Expensive trajectory plotting
         # --------------------------------------------------
-        if (
-            self.num_timesteps % self.trajectory_log_freq == 0
-            and self.last_finished_episode_info is not None
-        ):
-
-            self._plot_finished_episode(
-                self.last_finished_episode_info
-            )
-
+        # if (
+        #     self.num_timesteps % self.trajectory_log_freq == 0
+        #     and self.last_finished_episode_info is not None
+        # ):
+        #
+        #     self._plot_finished_episode(
+        #         self.last_finished_episode_info
+        #     )
+        #
         return True
 
     def _log_rewards_only(self, info):
@@ -78,6 +78,8 @@ class WandbTrajectoryCallback(BaseCallback):
             + info["reward_finish_race"]
             + info["reward_time"]
             + info["reward_start_speed"]
+            + info["reward_kartstatus"]
+            + info["reward_kartangle"]
         )
 
         wandb.log({
@@ -108,6 +110,12 @@ class WandbTrajectoryCallback(BaseCallback):
 
             "episode/reward_start_speed":
                 info["reward_start_speed"],
+
+            "episode/reward_kartstatus":
+                info["reward_kartstatus"],
+
+            "episode/reward_kartangle":
+                info["reward_kartangle"],
 
             "episode/final_rank":
                 info["rank"]/2+1,
@@ -193,6 +201,8 @@ class WandbTrajectoryCallback(BaseCallback):
             + info["reward_finish_race"]
             + info["reward_time"]
             + info["reward_start_speed"]
+            + info["reward_kartstatus"]
+            + info["reward_kartangle"]
         )
 
         ax.set_title(

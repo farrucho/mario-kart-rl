@@ -3,10 +3,49 @@ import stable_retro.data as stable_retro_data
 import cv2
 import numpy as np
 import gymnasium as gym
-
+import random
 
 class SuperMarioKartEnv(retro.RetroEnv):
-    def __init__(self, frameskipN, render_mode="rgb_array", game="/home/farrucho/Desktop/extra/mario-kart-rl/custom_integrations/SuperMarioKart-Snes", state="mushroom_cup_100cc_1player_start.state", inttype=stable_retro_data.Integrations.ALL, players=1):
+    def __init__(self, frameskipN, render_mode="rgb_array", game="/home/farrucho/Desktop/extra/mario-kart-rl/custom_integrations/SuperMarioKart-Snes", state="mushroom_cup_100cc_1player_start.state", inttype=stable_retro_data.Integrations.ALL, trackstateindex=-1, trainOnMultipleTracks=False, players=1):
+        # NOTE: only enable if we want to switch between luigi and mario states
+        # if random.sample([0,1], 1)[0] > 0.5:
+        #     state = "mariocircuit1_100cc_1player_start.state"
+        # else:
+        #     state = "mariocircuit1_100cc_1player_luigi_start.state"
+        #
+        # -------------------------
+        # NOTE: phase 2: train on more tracks
+        if trainOnMultipleTracks:
+            # states = ["bowsercastle1_100cc_1player_start.state",
+            #           "mariocircuit1_100cc_1player_start.state",
+            #           "mariocircuit2_100cc_1player_start.state",
+            #           "ghostvalley1_100cc_1player_start.state",
+            #           "donutplains1_100cc_1player_start.state"]
+            states = [
+                    "bowsercastle1_100cc_1player_start.state",
+                    "mariocircuit1_100cc_1player_start.state",
+                    "mariocircuit2_100cc_1player_start.state",
+                    "ghostvalley1_100cc_1player_start.state",
+                    "donutplains1_100cc_1player_start.state",
+                    #  ----
+                    "chocoisland1_100cc_1player_start.state",
+                    "ghostvalley2_100cc_1player_start.state",
+                    "donutplains2_100cc_1player_start.state",
+                    "bowsercastle2_100cc_1player_start.state",
+                    "mariocircuit3_100cc_1player_start.state"
+                    ]
+
+            if trackstateindex == -1:
+                # nao esquecer que neste modo a vec env tem sempre os mesmos mapas constantes, quando dá reset fica no mesmo mapa
+                state = random.choice(states)
+            else:
+                state = states[trackstateindex % len(states)]
+            # print(trackstateindex)
+        # ------------------------
+
+
+        self.state = state
+
         super().__init__(inttype=stable_retro_data.Integrations.ALL, render_mode=render_mode, game=game, state=state, players=players)
         
         self.observation, self.reward, self.terminated, self.info, = None,None,None,None
@@ -93,10 +132,10 @@ class SuperMarioKartEnv(retro.RetroEnv):
 
         if self.info is None or self.info == {}:
             # print("TRIGGER, FIRST STEP")
-            self.pos_south_hist = [next_info['pos_south']]
-            self.pos_east_hist = [next_info['pos_east']]
-            next_info['position_history_south'] = np.array((), dtype=np.int16)
-            next_info['position_history_east'] = np.array((), dtype=np.int16)
+            # self.pos_south_hist = [next_info['pos_south']]
+            # self.pos_east_hist = [next_info['pos_east']]
+            # next_info['position_history_south'] = np.array((), dtype=np.int32)
+            # next_info['position_history_east'] = np.array((), dtype=np.int32)
             next_info['last_checkpoint_time'] = 0
 
             next_info['checkpoints crossed'] = {
@@ -111,7 +150,8 @@ class SuperMarioKartEnv(retro.RetroEnv):
             next_info['reward_finish_race'] = 0
             next_info['reward_time'] = 0
             next_info['reward_start_speed'] = 0
-
+            next_info['reward_kartstatus'] = 0
+            next_info['reward_kartangle'] = 0
 
             self.observation, self.reward, self.terminated, self.info, = next_observation, next_reward, False, next_info        
 
@@ -119,9 +159,9 @@ class SuperMarioKartEnv(retro.RetroEnv):
             return next_observation, reward, next_terminated, False, next_info
         else:
             # store info
-            self.pos_south_hist.append(next_info['pos_south'])
-            self.pos_east_hist.append(next_info['pos_east'])
-            
+            # self.pos_south_hist.append(next_info['pos_south'])
+            # self.pos_east_hist.append(next_info['pos_east'])
+            #
             next_info['last_checkpoint_time'] = self.info['last_checkpoint_time']
             next_info['checkpoints crossed'] = self.info['checkpoints crossed']
 
@@ -133,20 +173,29 @@ class SuperMarioKartEnv(retro.RetroEnv):
             next_info['reward_finish_race'] = self.info['reward_finish_race']
             next_info['reward_time'] = self.info['reward_time']
             next_info['reward_start_speed'] = self.info['reward_start_speed']
+            next_info['reward_kartstatus'] = self.info['reward_kartstatus']
+            next_info['reward_kartangle'] = self.info['reward_kartangle']
 
-
-            next_lap = next_info['current_lap']-127 # 0,1,2,3,4,5,6==finished
+            next_lap = max(0,next_info['current_lap']-127) # 0,1,2,3,4,5,6==finished
             next_rank = next_info['rank']/2+1 # (Rank-1)*2)
             next_checkpoint = next_info['checkpoint']
             next_seconds = next_info['clock_minutes']*60 + next_info['clock_seconds']
             next_collision = next_info['collision_detection']
+            next_kartstatus = next_info['kartstatus'] # in lava==6, in lakitu==12
+            next_kart_angle = next_info['kart_angle']
 
+            if next_lap == -1:
+                print("next_lap == -1!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n!!!!!!!!!!!!!")
+                print(next_seconds, next_rank, next_checkpoint, self.state, next_info)
 
             current_lap = self.info['current_lap']-127 # 0,1,2,3,4,5,6==finished
             current_max_reached_lap = self.info['max_reached_lap']-127 
             current_rank = self.info['rank']/2+1 # (Rank-1)*2)
             current_checkpoint = self.info['checkpoint']
             current_seconds = self.info['clock_minutes']*60 + self.info['clock_seconds']
+            current_kartstatus = self.info['kartstatus'] # in lava==6, in lakitu==12
+            current_kart_angle = self.info['kart_angle']
+
 
             # passou um checkpoint e prevenir que nao ande às voltas
             if next_checkpoint > current_checkpoint:
@@ -162,10 +211,18 @@ class SuperMarioKartEnv(retro.RetroEnv):
                 next_info['reward_lap'] += 20
 
             
+            if next_kartstatus == 4 or next_kartstatus == 6 or next_kartstatus == 8 or next_kartstatus == 12: # fallen off,water,lava or lakitu taking coins
+                reward += -0.4
+                next_info['reward_kartstatus'] += -0.4
+
+            if abs(next_kart_angle) > 16500: # hit a banana skin/shell, etc
+                reward += -0.3
+                next_info['reward_kartangle'] += -0.3
+
             if next_collision == 7:
                 # penalizar colisoes
-                reward += -1
-                next_info['reward_collision'] += -1
+                reward += -0.5
+                next_info['reward_collision'] += -0.5
                 # print("colisao")
 
             # rank reward per step
@@ -191,17 +248,18 @@ class SuperMarioKartEnv(retro.RetroEnv):
 
             # com frameskip de 4 obtém 1569 steps -> ~10steps/segundo
             terminated = (next_lap == 6) or \
-                            next_seconds - next_info['last_checkpoint_time'] > 8 or \
+                            next_seconds - next_info['last_checkpoint_time'] > 15 or \
                             (next_seconds > 150) or \
                             (next_rank == 8 and next_seconds > 30)
-            
-            if terminated:
-                next_info['position_history_south'] = np.array(self.pos_south_hist, dtype=np.int16)
-                next_info['position_history_east'] = np.array(self.pos_east_hist, dtype=np.int16)
-            else:
-                next_info['position_history_south'] = np.array([], dtype=np.int16)
-                next_info['position_history_east'] = np.array([], dtype=np.int16)
-            # terminar se user acabou corrida ou nao houver progressao checkpoint ou episodio > 150s ou fez uma lap e ainda está em ultimo
+                             # next_seconds - next_info['last_checkpoint_time'] > 8 or \
+           
+            # if terminated:
+            #     next_info['position_history_south'] = np.array(self.pos_south_hist, dtype=np.int32)
+            #     next_info['position_history_east'] = np.array(self.pos_east_hist, dtype=np.int32)
+            # else:
+            #     next_info['position_history_south'] = np.array([], dtype=np.int32)
+            #     next_info['position_history_east'] = np.array([], dtype=np.int32)
+            # # terminar se user acabou corrida ou nao houver progressao checkpoint ou episodio > 150s ou fez uma lap e ainda está em ultimo
 
         self.observation, self.reward, self.terminated, self.info = next_observation, reward, terminated, next_info
         return self.observation, self.reward, self.terminated, _, self.info
@@ -227,9 +285,10 @@ class SuperMarioKartEnv(retro.RetroEnv):
         # img = cv2.resize(img, (84, 84), interpolation=cv2.INTER_AREA)
         # cv2.imwrite(filepath, img)
 
-# env = SuperMarioKartEnv(frameskipN=4,state="mushroom_cup_100cc_2player_start.state")
-
+# env = SuperMarioKartEnv(frameskipN=4,state="bowsercastle1_100cc_1player_start.state")
+# env = SuperMarioKartEnv(frameskipN=4,state="bowsercastle1_100cc_1player_start.state",render_mode="human")
+#
 # _, _ = env.reset()
 # while True:
 #     obs ,*_ = env.step(env.action_space.sample())
-#     env.save_png_observation(obs)
+    # env.save_png_observation(obs)

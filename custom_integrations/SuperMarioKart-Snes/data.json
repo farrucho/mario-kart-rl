@@ -36,8 +36,16 @@
       "address": 8260713,
       "type": "|u1"
     },
+    "kart_angle": {
+      "address": 8261802,
+      "type": "!i2"
+    },
     "kart_skidded_out_of_control": {
       "address": 8261798,
+      "type": "|u1"
+    },
+    "kartstatus": {
+      "address": 8261792,
       "type": "|u1"
     },
     "max_reached_lap": {

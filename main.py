@@ -1,5 +1,3 @@
-from sympy import true
-
 import ImpalaCNN
 from SuperMarioKartEnv import SuperMarioKartEnv
 from SuperMarioKartSelfPlayEnv import SuperMarioKartSelfPlayEnv
@@ -9,11 +7,11 @@ from ImpalaCNN import ImpalaCNN
 import wandb
 from wandb.integration.sb3 import WandbCallback
 from stable_baselines3 import PPO
-from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecFrameStack
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env import VecNormalize
+from stable_baselines3.common.callbacks import CheckpointCallback
 
 from WandbTrajectoryCallback import WandbTrajectoryCallback
 
@@ -37,15 +35,15 @@ if __name__ == "__main__":
         "stats_window_size": 100,
         "model_save_freq": 30000,
         "gradient_save_freq": 40000,
-        "record_video_trigger": 100000,
+        "record_video_trigger": 60000,
         "video_length": 1024, # igual ao nsteps para perceber
-        "reward_log_freq": 1000, # global steps
+        "reward_log_freq": 5000, # global steps
         "trajectory_log_freq": 50000,
     }
 
     run = wandb.init(
         project="SuperMarioKart",
-        name="Phase 0: ImpalaCNN (part2)",
+        name="Phase 2: (part4) 10 tracks uniform pool, added 5 more tracks because generalization was not good",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         monitor_gym=True,  # auto-upload the videos of agents playing the game
@@ -62,8 +60,15 @@ if __name__ == "__main__":
     traj_cb = WandbTrajectoryCallback(reward_log_freq=config["reward_log_freq"],
     trajectory_log_freq=config["trajectory_log_freq"])
 
+    checkpoint_cb = CheckpointCallback(
+        save_freq=20000,
+        save_path=f"models/{run.id}/checkpoints/",
+        name_prefix="model",
+        save_replay_buffer=False,
+        save_vecnormalize=False
+    )
 
-    num_cpu = 14
+    num_cpu = 10
     frameskip = 4
     framestack = 4
 
@@ -71,14 +76,21 @@ if __name__ == "__main__":
 
     if selfplay:
         models_pool = [
-            "/home/farrucho/Desktop/extra/mario-kart-rl/models/16yxsuaq/model_13M.zip",
-            "/home/farrucho/Desktop/extra/mario-kart-rl/models/3eacin6z/model_15M.zip",
-            "/home/farrucho/Desktop/extra/mario-kart-rl/models/3eacin6z/model_19M.zip",
-            "/home/farrucho/Desktop/extra/mario-kart-rl/models/3eacin6z/model_21M.zip"
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/s8x8ckan/model_30M.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/uhwchs57/model_60M.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/uhwchs57/model_60M.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/f6ex7p8m/checkpoints/model_64024000_steps.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/f6ex7p8m/checkpoints/model_65060000_steps.zip", 
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/f6ex7p8m/checkpoints/model_66012000_steps.zip", 
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/f6ex7p8m/checkpoints/model_66712000_steps.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/cu1k1ouv/checkpoints/model_68070000_steps",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/cu1k1ouv/checkpoints/model_72060000_steps.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/cu1k1ouv/checkpoints/model_70170000_steps.zip",
+            "/home/farrucho/Desktop/extra/mario-kart-rl/models/cu1k1ouv/checkpoints/model_73740000_steps.zip",
         ]
-        vec_env = SubprocVecEnv([lambda: SuperMarioKartSelfPlayEnv(models_pool=models_pool, frameskipN=frameskip, frame_stack=framestack) for _ in range(num_cpu)], start_method="spawn")
+        vec_env = SubprocVecEnv([lambda: Monitor(SuperMarioKartSelfPlayEnv(models_pool=models_pool, frameskipN=frameskip, frame_stack=framestack)) for _ in range(num_cpu)], start_method="spawn")
     else:
-        vec_env = SubprocVecEnv([lambda: Monitor(SuperMarioKartEnv(frameskipN=frameskip)) for _ in range(num_cpu)], start_method="fork")
+        vec_env = SubprocVecEnv([lambda cpu_n = cpu_n: Monitor(SuperMarioKartEnv(frameskipN=frameskip, trackstateindex=cpu_n, trainOnMultipleTracks=True)) for cpu_n in range(num_cpu)], start_method="fork")
 
     vec_env = VecFrameStack(vec_env, n_stack=framestack, channels_order="first")
 
@@ -121,13 +133,13 @@ if __name__ == "__main__":
 
     # model.learn(
     #     total_timesteps=config["total_timesteps"],
-    #     callback=[wandb_main_cb, traj_cb],
+    #     callback=[wandb_main_cb, traj_cb, checkpoint_cb],
     # )
 
 
     # LOAD FROM CHECKPOINT!!
     model = PPO.load(
-        "models/bt2i4cus/model.zip",
+        "models/6axs4z55/checkpoints/model_204400000_steps.zip",
         env=vec_env,
         device="cuda",
         total_timesteps = config["total_timesteps"],
@@ -148,7 +160,8 @@ if __name__ == "__main__":
 
     model.learn(
         total_timesteps=config["total_timesteps"],
-        callback=[wandb_main_cb, traj_cb],
+        callback=[wandb_main_cb, traj_cb, checkpoint_cb],
+        # callback=[wandb_main_cb, checkpoint_cb], 
         reset_num_timesteps=False,
     )
 
