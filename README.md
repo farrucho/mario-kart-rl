@@ -17,7 +17,7 @@ The agent is able to:
 
 ---
 
-![Rollout Buffer during training](media/demo.gif)
+![Rollout Buffer during training](media/output.gif)
 
 ---
 
